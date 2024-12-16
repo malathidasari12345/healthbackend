@@ -1,5 +1,6 @@
 const Contact = require("../models/contact");
 const { sendEmail } = require("../utilis/emailservice");
+require("dotenv").config();
 
 // Controller for handling contact form submission
 const submitContactForm = async (req, res) => {
@@ -22,6 +23,12 @@ const submitContactForm = async (req, res) => {
     // Send confirmation email
     await sendEmail(email, emailSubject, emailText);
 
+    const adminEmail = process.env.EMAIL_USER;
+    const adminName = adminEmail.split("@")[0].split(".")[0];
+    const adminSubject = "New Contact Form Submission";
+    const adminText = `Hello ${adminName},\n\nA new contact form submission has been received:\n\nName: ${fullName}\nEmail: ${email}\nSubject: ${subject}\nMessage: ${message}\n\nPlease follow up with the user as needed.\n\nBest regards,\nContact System`;
+    await sendEmail(adminEmail, adminSubject, adminText);
+
     res.status(200).json({ message: "Message sent successfully." });
   } catch (error) {
     console.error("Error in contact form submission:", error.message);
@@ -29,6 +36,6 @@ const submitContactForm = async (req, res) => {
   }
 };
 
-module.exports ={
-    submitContactForm
-}
+module.exports = {
+  submitContactForm,
+};
