@@ -10,6 +10,8 @@ const {
   getAllUsers,
   Userlogout,
   verifyOtp,
+  forgetPassword,
+  resetPassword,
 } = require("../controllers/usercontrollers");
 const auth = require("../middlewares/auth");
 const Admin = require("../middlewares/admin");
@@ -25,16 +27,16 @@ router.post("/login", loginUser);
 // logout
 router.get("/logout", auth, Userlogout);
 
-// adnim routes
-// router.get('/', auth, Admin, getAllUsers);
 router.get("/", getAllUsers);
 // Delete user by ID
-router.delete("/:id", auth, Admin, deleteUser);
+router.delete("/:id", deleteUser);
 
 // user routes
 // Get a single user by ID
 router.get("/:id", auth, user, getUserById);
 // Update user by ID
 router.put("/:id", auth, user, updateUser);
-
+// password
+router.post("/forget-password", forgetPassword);
+router.post("/reset-password/:resetToken", resetPassword);
 module.exports = router;

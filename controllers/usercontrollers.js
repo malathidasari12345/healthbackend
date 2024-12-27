@@ -1,10 +1,11 @@
 const User = require("../models/user");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../utilis/emailservice");
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// register 
+// register
 const registerUser = async (req, res) => {
   const { FirstName, LastName, email, phoneNumber, password, confirmpassword } =
     req.body;
@@ -175,6 +176,109 @@ const Userlogout = (req, res) => {
       message: "Logged out successfully",
     });
 };
+// forget password
+const forgetPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "User not found with this email address." });
+    }
+
+    // Generate reset token
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    // const resetToken = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpire = Date.now() + 3600000;
+
+    await user.save();
+
+    // const resetUrl = `http://${req.headers.host}/api/users/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.client_url}/reset-password/${resetToken}`;
+    console.log(process.env.client_url);
+    console.log(resetToken);
+
+    const emailContent = `Hi ${user.FirstName} ${user.LastName},<br><br>
+    Thank you for requesting a password reset. please follow the link below to reset your password.<br><br>
+    Please <a href="${resetUrl}">Clickhere</a> to reset your password.<br><br>
+    Best regards,<br>
+    GiveHope`;
+
+    await sendEmail(email, "Password Reset Request", emailContent, true);
+
+    res.status(200).json({
+      message: "Password reset link has been sent to your email.",
+    });
+  } catch (error) {
+    console.error("Error during password reset request:", error.message);
+    res
+      .status(500)
+      .json({ message: "Something went wrong, please try again later." });
+  }
+};
+
+// reset
+// reset
+const resetPassword = async (req, res) => {
+  const { password, confirmpassword } = req.body;
+  const { resetToken } = req.params;
+
+  try {
+    // Check if both passwords match
+    if (password !== confirmpassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    // Find the user with the reset token
+    const user = await User.findOne({ resetPasswordToken: resetToken });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired reset token" });
+    }
+
+    // Check if the token has expired (1 hour expiry time)
+    if (user.resetPasswordExpire < Date.now()) {
+      return res.status(400).json({ message: "Reset token has expired" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update user's password
+    user.password = hashedPassword;
+    user.confirmpassword = hashedPassword;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpire = null;
+
+    await user.save();
+
+    // Send email confirmation
+    const emailContent = `Hi ${user.FirstName} ${user.LastName},<br><br>
+    Your password has been successfully reset. You can now log in with your new password.<br><br>
+    If you did not request a password reset, please contact support immediately.<br><br>
+    Best regards,<br>
+    GiveHope`;
+
+    await sendEmail(
+      user.email,
+      "Password Reset Confirmation",
+      emailContent,
+      true
+    );
+
+    res.status(200).json({ message: "Password reset successfully!" });
+  } catch (error) {
+    console.error("Error during password reset:", error.message);
+    res
+      .status(500)
+      .json({ message: "Failed to reset password", error: error.message });
+  }
+};
 
 module.exports = {
   registerUser,
@@ -185,4 +289,6 @@ module.exports = {
   getAllUsers,
   Userlogout,
   verifyOtp,
+  forgetPassword,
+  resetPassword,
 };

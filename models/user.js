@@ -40,6 +40,18 @@ const usersSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Campaign",
+      },
+    ],
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpire: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
